@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Sign in — YatraGo{% endblock %}
+{% block content %}
+<section class="auth-section">
+  <div class="auth-card">
+    <span class="eyebrow">WELCOME BACK</span><h1>Pick up where<br>the journey left off.</h1>
+    <p class="muted">Sign in to manage your trips and bookings.</p>
+    <form method="post" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Email address<input type="email" name="email" required maxlength="254" autocomplete="email" value="{{ request.form.get('email', '') }}"></label>
+      <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
+      <button class="button button-wide" type="submit">Sign in</button>
+    </form>
+    <p class="auth-foot">New to YatraGo? <a href="{{ url_for('auth.register') }}">Create an account</a></p>
+  </div>
+  <div class="auth-art auth-art-login">
+    <img class="auth-art-photo" src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&amp;fit=crop&amp;w=1200&amp;q=90" data-fallback="{{ url_for('static', filename='images/travel-fallback.svg') }}" alt="A peaceful mountain lake surrounded by forest and alpine peaks" loading="lazy">
+    <div class="auth-art-copy"><span>TAKE THE SCENIC ROUTE</span><p>There’s a whole country<br>waiting outside.</p></div>
+  </div>
+</section>
+{% endblock %}

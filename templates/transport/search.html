@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Choose your transport — YatraGo{% endblock %}
+{% block content %}
+<section class="transport-banner"><div class="page-wrap"><span class="eyebrow eyebrow-light">GO THE WAY YOU WANT</span><h1>Choose Your Transport</h1><p>Compare sample journeys across India. Real adventures, demonstration inventory.</p></div></section>
+<section class="page-wrap transport-page-search">
+  {% include "transport/_search_form.html" %}
+  {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
+  {% if is_search and not error %}
+    <div class="section-heading transport-result-heading"><div><span class="eyebrow">SAMPLE {{ mode_label|upper }} OPTIONS · {{ travel_date }}</span><h2>{{ origin }}{% if destination %} <span class="text-red">→</span> {{ destination }}{% endif %}</h2></div><span class="sample-pill">DEMO DATA ONLY</span></div>
+    <form method="get" action="{{ url_for('transport.search') }}" class="transport-filters">
+      {% for key,value in [('mode',mode),('origin',origin),('destination',destination),('date',travel_date),('departure_time',departure_time),('return_date',return_date),('trip_type',trip_type),('passengers',passengers)] %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+      <label>Max sample fare (₹)<input type="number" name="max_price" min="1" value="{{ max_price }}" placeholder="Any fare"></label>
+      <label>Comfort / stops<select name="max_stops"><option value="">Any</option><option value="0" {% if max_stops|string == '0' %}selected{% endif %}>Non-stop</option><option value="1" {% if max_stops|string == '1' %}selected{% endif %}>Up to 1 stop</option></select></label>
+      <label>Sort by<select name="sort"><option value="price" {% if sort == 'price' %}selected{% endif %}>Lowest fare</option><option value="duration" {% if sort == 'duration' %}selected{% endif %}>Shortest journey</option><option value="departure" {% if sort == 'departure' %}selected{% endif %}>Departure time</option></select></label>
+      <label>Service type<select name="service_type"><option value="">Any type</option>{% for item in service_types %}<option value="{{ item }}" {% if service_type == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label><button class="button button-small">Apply filters</button>
+    </form>
+    {% if results %}
+      <div class="transport-result-list">{% for option in results %}
+        <article class="transport-result-card">
+          <img class="transport-result-photo" src="{{ option.sample_image }}" alt="{{ option.mode }} sample transport between {{ option.origin }} and {{ option.destination }}" loading="lazy">
+          <div class="transport-result-main"><div class="transport-provider-line"><span class="eyebrow">{{ option.provider }} · {{ option.service_code }}</span><span class="sample-pill">SAMPLE</span></div><h3>{{ option.service_type }} <span class="comfort-pill">{{ option.comfort }}</span></h3><div class="transport-route-line"><strong>{{ option.departure_at.strftime('%I:%M %p') }}</strong><span>{{ option.origin }}</span><i></i><span>{{ option.destination }}</span><strong>{{ (option.departure_at + timedelta(minutes=option.duration_minutes)).strftime('%I:%M %p') }}</strong></div><p>{{ option.duration_minutes // 60 }}h {{ option.duration_minutes % 60 }}m estimated{% if option.stops %} · {{ option.stops }} stop(s){% else %} · direct{% endif %} · {{ option.amenities }}</p>
+          {% if option.mode == 'train' %}<small>{{ option.available_seats }} sample seats available · reserved-seat selection</small>{% elif option.mode in ['metro','ferry'] %}<small>Sample route information · check local operator for service changes</small>{% else %}<small>Indicative sample estimate · availability is not live</small>{% endif %}</div>
+          <div class="transport-result-side"><strong>₹{{ option.fare }}{% if option.price_basis == 'per_day' %}<small> / day</small>{% elif option.price_basis == 'per_person' %}<small> / person</small>{% else %}<small> / vehicle</small>{% endif %}</strong><span>{{ option.service_type }}</span>
+          {% if option.mode == 'cab' and trip_type == 'roundtrip' and not return_results %}<button class="button button-small button-disabled" disabled>No sample return</button>{% else %}<a class="button button-small" href="{{ url_for('transport.booking_form', option_id=option.id, passengers=passengers, trip_type=trip_type, return_date=return_date) }}">Review booking →</a>{% endif %}</div>
+        </article>
+      {% endfor %}</div>
+      {% if mode == 'cab' and trip_type == 'roundtrip' and return_results %}<p class="data-note">A return taxi option is available for the selected route and date. Select your return service on the review step.</p>{% endif %}
+    {% else %}<div class="empty-state"><span class="empty-icon">⌕</span><h2>No matching sample services</h2><p>Try another route or date, or clear filters. Local route coverage is limited to selected demonstration services.</p><a class="button button-small" href="{{ url_for('transport.search', mode=mode) }}">Clear search</a></div>{% endif %}
+  {% endif %}
+  {% if recent_searches %}<section class="recent-searches"><span class="eyebrow">RECENT SEARCHES</span><div>{% for item in recent_searches %}<a href="{{ url_for('transport.search', mode=item.mode, origin=item.origin, destination=item.destination, date=item.date, trip_type=item.trip_type) }}"><strong>{{ modes[item.mode][1] }} {{ item.origin }} → {{ item.destination }}</strong><small>{{ item.date }} · {{ modes[item.mode][0] }}</small></a>{% endfor %}</div></section>{% endif %}
+  <section class="popular-transport-routes"><div class="section-heading"><div><span class="eyebrow">INDIA, CONNECTED</span><h2>Popular sample routes</h2></div><span class="muted">Compare the journeys that suit you</span></div><div class="popular-route-grid">
+    {% for source,destination in [('Bengaluru','Mysuru'),('Delhi','Jaipur'),('Bengaluru','Chennai'),('Mumbai','Pune'),('Kochi','Munnar'),('Mumbai','Goa'),('Delhi','Dubai'),('Chennai','Colombo')] %}
+      <a href="{{ url_for('transport.search', mode='train' if loop.index <= 4 else 'flight', origin=source, destination=destination, date=(today_date + timedelta(days=1)).isoformat()) }}"><span>↗</span><strong>{{ source }} → {{ destination }}</strong><small>Sample options · view routes</small></a>
+    {% endfor %}
+  </div></section>
+</section>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Select seats — YatraGo{% endblock %}
+{% block content %}
+<section class="page-banner"><div class="page-wrap"><span class="eyebrow eyebrow-light">YOUR JOURNEY STARTS HERE</span><h1>Choose your seats.</h1><p>{{ trip.route.source }} → {{ trip.route.destination }} · {{ trip.departure_at.strftime('%a, %d %b %Y · %I:%M %p') }}</p></div></section>
+<section class="page-wrap booking-layout">
+  <form method="post" class="seat-panel" id="booking-form" data-fare="{{ trip.fare }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="passenger_count" value="{{ passenger_count }}">
+    <div class="section-heading"><div><span class="eyebrow">SEAT MAP</span><h2>Pick a seat</h2></div><span class="muted">₹{{ trip.fare }} per seat · {{ passenger_count }} traveller{% if passenger_count != 1 %}s{% endif %} · Demo booking</span></div>
+    <div class="seat-legend"><span><i class="legend-available"></i>Available</span><span><i class="legend-selected"></i>Selected</span><span><i class="legend-booked"></i>Booked</span></div>
+    <div class="bus-layout"><div class="driver">FRONT OF BUS <span>◉</span></div>
+      <div class="seat-grid">
+      {% for seat in seats|sort(attribute='seat_number') %}
+        <label class="seat {% if seat.booking_id %}seat-booked{% endif %}">
+          <input type="checkbox" name="seat_ids" value="{{ seat.id }}" data-seat="{{ seat.seat_number }}" {% if seat.booking_id %}disabled{% endif %}>
+          <span>{{ seat.seat_number }}</span>
+        </label>
+      {% endfor %}
+      </div>
+    </div>
+    <div class="passenger-section">
+      <div class="section-heading"><div><span class="eyebrow">TRAVELLER DETAILS</span><h2>Who’s coming along?</h2></div></div>
+      <div id="passenger-fields" class="passenger-grid">
+        {% for index in range(6) %}
+        <fieldset class="passenger-card" data-passenger="{{ index }}" {% if index >= passenger_count %}hidden{% endif %}>
+          <legend>Passenger {{ index + 1 }} <span class="seat-assignment"></span></legend>
+          <label>Full name<input type="text" name="name_{{ index }}" maxlength="100" autocomplete="name" {% if index < passenger_count %}required{% else %}disabled{% endif %}></label>
+          <div class="passenger-input-row"><label>Age<input type="number" name="age_{{ index }}" min="1" max="120" {% if index < passenger_count %}required{% else %}disabled{% endif %}></label>
+            <label>Gender<select name="gender_{{ index }}" {% if index < passenger_count %}required{% else %}disabled{% endif %}><option value="">Select</option><option>Female</option><option>Male</option><option>Other</option><option>Prefer not to say</option></select></label></div>
+        </fieldset>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="booking-submit"><span id="selection-count">Select seats to add passengers</span><button class="button" type="submit">Confirm booking →</button></div>
+  </form>
+  <aside class="booking-summary"><span class="eyebrow">TRIP SUMMARY</span><h2>{{ trip.route.source }} <span class="text-red">→</span> {{ trip.route.destination }}</h2><p>{{ trip.bus.operator }} · {{ trip.bus.bus_type }}</p><div class="summary-line"><span>Departure</span><strong>{{ trip.departure_at.strftime('%d %b · %I:%M %p') }}</strong></div><div class="summary-line"><span>Arrival</span><strong>{{ trip.arrival_at.strftime('%d %b · %I:%M %p') }}</strong></div><div class="summary-line"><span>Fare per seat</span><strong>₹{{ trip.fare }}</strong></div><div class="summary-total"><span>Total</span><strong id="total-fare">₹0</strong></div><p class="tiny-note">This is a demo booking only. No payment will be collected.</p></aside>
+</section>
+{% endblock %}

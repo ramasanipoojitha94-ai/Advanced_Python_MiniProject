@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Reserve a sample stay — YatraGo{% endblock %}
+{% block content %}
+<section class="page-banner banner-hotels"><div class="page-wrap"><span class="eyebrow eyebrow-light">A PLACE TO CALL YOURS</span><h1>Review your stay.</h1><p>Sample property details and illustrative prices only.</p></div></section>
+<section class="page-wrap travel-book-layout">
+  <form method="post" class="travel-form-card" id="stay-booking-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><span class="eyebrow">GUEST DETAILS</span><h2>{{ property_item.name }}</h2><p>{{ property_item.city }} · {{ property_item.property_type }} · ₹{{ property_item.price_per_night }} per night</p>
+    <div class="stay-date-row"><label>Check-in<input type="date" name="check_in" min="{{ today }}" value="{{ request.args.get('check_in', '') }}" required></label><label>Check-out<input type="date" name="check_out" min="{{ today }}" value="{{ request.args.get('check_out', '') }}" required></label></div>
+    <label>Number of guests<select name="guest_count" id="stay-guest-count">{% for count in range(1,9) %}<option value="{{ count }}" {% if request.args.get('guest_count', '1')|int == count %}selected{% endif %}>{{ count }} guest{% if count > 1 %}s{% endif %}</option>{% endfor %}</select></label>
+    <div class="flight-passenger-fields">{% for index in range(8) %}<label class="stay-guest-field" data-guest="{{ index }}" {% if index >= request.args.get('guest_count', '1')|int %}hidden{% endif %}>Guest {{ index + 1 }} name<input name="guest_{{ index }}" maxlength="100" {% if index < request.args.get('guest_count', '1')|int %}required{% else %}disabled{% endif %}></label>{% endfor %}</div>
+    <label>Room option<select name="room_type"><option>Standard room</option><option>Family room</option></select></label>
+    <p class="data-note">This reservation is stored as a demonstration booking only. No external hotel or payment service is contacted.</p><button class="button button-wide">Confirm sample stay · no payment</button>
+  </form>
+  <aside class="booking-summary"><span class="eyebrow">PROPERTY DETAILS</span><h2>{{ property_item.destination.name }}</h2><p>{{ property_item.location_note }} · approximate sample area</p><div class="summary-line"><span>Property</span><strong>{{ property_item.name }}</strong></div><div class="summary-line"><span>Type</span><strong>{{ property_item.property_type }}</strong></div><div class="summary-line"><span>Nightly sample rate</span><strong>₹{{ property_item.price_per_night }}</strong></div><div class="summary-line"><span>Sample guest rating</span><strong>{{ property_item.rating }}</strong></div><div class="summary-total"><span>Rate estimate</span><strong>₹{{ property_item.price_per_night }} / night</strong></div><p class="tiny-note">Final sample total is calculated and saved after dates are validated.</p></aside>
+</section>
+{% endblock %}

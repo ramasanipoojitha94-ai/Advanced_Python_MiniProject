@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Explore the world map — YatraGo{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">{% endblock %}
+{% block content %}
+<section class="world-hero"><div class="page-wrap"><span class="eyebrow eyebrow-light">A WORLD OF POSSIBILITIES</span><h1>Explore World Map.</h1><p>Browse global sample places, save favourites and bring map discoveries into a trip plan.</p></div></section>
+<section class="page-wrap world-page">
+  <form class="world-filter" id="world-filter">
+    <label class="world-search-field">Search places, cities, countries or addresses
+      <input type="search" name="q" value="{{ query }}" placeholder="Try Bengaluru, Tokyo or Central Park">
+    </label>
+    <label>Place type<select name="type"><option value="all">All places</option>{% for value,label in [('destination','Destinations'),('hotel','Hotels & stays'),('restaurant','Restaurants & food'),('attraction','Attractions'),('transport','Transport')] %}<option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label>Local category<select name="category"><option value="">All categories</option>{% for value in categories %}<option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+    <label>Cuisine<input type="search" name="cuisine" placeholder="e.g. South Indian"></label>
+    <label>Dietary<select name="dietary"><option value="">Any</option><option>Vegetarian</option><option>Non-vegetarian</option></select></label>
+    <label>Amenity<input type="search" name="amenity" placeholder="e.g. Wi-Fi"></label>
+    <label>Max sample price · ₹<input type="number" name="max_price" min="0" max="1000000" placeholder="Any"></label>
+    <label>Rating<select name="min_rating"><option value="">No minimum</option><option value="3">3+ (including unverified traveller reviews)</option><option value="4">4+ (including unverified traveller reviews)</option></select></label>
+    <label>Radius · km<input type="number" name="radius" min="1" max="5000" step="1" placeholder="Set location first"></label>
+    <label>Sort<select name="sort"><option value="relevance">Relevance</option><option value="price">Sample price</option><option value="rating">Rating</option><option value="distance">Distance</option></select></label>
+    {% if current_user.is_authenticated %}<label class="saved-only"><input type="checkbox" name="saved" value="1" {% if saved_only %}checked{% endif %}> Saved places only</label>{% endif %}
+    <button class="button button-small" type="submit">Search places</button>
+  </form>
+  {% if recent_searches %}<div class="world-recent-searches"><span class="eyebrow">RECENT PLACE SEARCHES</span>{% for recent in recent_searches %}<button type="button" data-recent-search="{{ recent }}">{{ recent }}</button>{% endfor %}</div>{% endif %}
+  <div class="world-map-tools"><div class="map-view-toggle" role="group" aria-label="Choose map or list view"><button type="button" class="active" data-map-view="map">Map view</button><button type="button" data-map-view="list">List view</button></div><button class="button button-outline button-small" id="locate-me" type="button">◎ Use my location</button><button class="button button-outline button-small" type="button" id="currency-toggle" aria-pressed="false">Show local sample prices</button><span id="location-status" role="status">Location permission is requested only when you choose this button.</span><a class="text-link" href="{{ url_for('world.planner') }}">Travel planner →</a></div>
+  <div class="world-data-notice"><strong>Curated demo places — not live business listings.</strong> No hotel inventory, restaurant opening hours, ratings or availability are verified. Place coordinates and straight-line distances are approximate examples. Map tiles © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>; public tiles are used with attribution and no bulk downloading.</div>
+  <div class="world-layout">
+    <section class="world-map-panel" id="world-map-panel" aria-label="Interactive world map">
+      <div id="world-map" role="application" aria-label="Pan and zoom world map"></div>
+      <div class="map-point-selected" id="selected-point" hidden><span id="selected-point-label">No map point selected.</span><a id="plan-selected-point" class="button button-small" href="#">Add map point to a trip →</a></div>
+    </section>
+    <section class="world-results-panel" id="world-list-panel"><div class="world-results-heading"><strong><span id="world-result-count">{{ places|length }}</span> sample places</strong><span id="distance-note">Ratings and hours are shown only when supported by data.</span></div><div class="world-place-list" id="world-place-list">
+      {% for place in places %}<article class="world-place-card">
+        <img src="{{ place.image }}" alt="{{ place.name }} sample {{ place.type }} in {{ place.city }}, {{ place.country }}" loading="lazy">
+        <div class="world-place-details"><span class="eyebrow">{{ place.type|capitalize }} · {{ place.category }} · SAMPLE</span><h2>{{ place.name }}</h2><p>{{ place.description }}</p><small>{{ place.address }} · {{ place.city }}, {{ place.country }}</small><div class="world-place-facts">{% if place.rating %}<span>★ {{ place.rating }} <small>{{ place.rating_kind }}{% if place.rating_count %} · {{ place.rating_count }} review(s){% endif %}</small></span>{% else %}<span>No verified rating</span>{% endif %}{% if place.price_inr is not none %}<strong data-currency="inr">₹{{ "{:,}".format(place.price_inr) }} <small>sample{% if place.type == 'hotel' %} / night{% elif place.type == 'restaurant' %} / person{% endif %}</small></strong>{% endif %}{% if place.local_price is not none and place.local_currency != 'INR' %}<strong data-currency="local" hidden>{{ place.local_currency }} {{ place.local_price }} <small>illustrative local amount</small></strong>{% endif %}{% if place.distance_km is not none %}<span>~{{ place.distance_km }} km straight-line <small>from selected point (approx.)</small></span>{% endif %}</div><p class="world-place-meta">{{ place.amenities }}{% if place.cuisine %} · {{ place.cuisine }} · {{ place.dietary }}{% endif %} · Hours: {{ place.opening_hours }}</p>
+        <div class="world-place-actions"><a class="text-link" href="https://www.openstreetmap.org/?mlat={{ place.lat }}&amp;mlon={{ place.lon }}#map=15/{{ place.lat }}/{{ place.lon }}" target="_blank" rel="noopener noreferrer">View on OpenStreetMap ↗</a><a class="text-link" href="{{ url_for('world.planner', place_id=place.id) }}">Add to trip plan →</a>{% if current_user.is_authenticated %}<form method="post" action="{{ url_for('world.toggle_saved_place', place_id=place.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="save-place {% if place.saved %}is-saved{% endif %}" aria-label="{% if place.saved %}Remove saved place{% else %}Save place{% endif %}">{% if place.saved %}♥{% else %}♡{% endif %}</button></form>{% endif %}</div>
+          {% if current_user.is_authenticated %}<details class="place-review-form"><summary>Write a traveller review</summary><form method="post" action="{{ url_for('world.add_review', place_id=place.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Rating<select name="rating" required><option value="">Select</option>{% for rating in range(1,6) %}<option value="{{ rating }}">{{ rating }} / 5</option>{% endfor %}</select></label><label>Review<textarea name="body" maxlength="1000" required rows="2" placeholder="Share your experience"></textarea></label><button class="button button-small">Save unverified review</button></form></details>{% endif %}
+        </div>
+      </article>{% else %}<div class="empty-state"><h2>No sample places match</h2><p>Try a different city, country or filter. Global place search is limited to the curated demo catalog.</p></div>{% endfor %}
+    </div></section>
+  </div>
+</section>
+<script>window.yatraGoMapPlaces = {{ places|tojson }}; window.yatraGoCsrfToken = {{ csrf_token()|tojson }}; window.yatraGoSignedIn = {{ current_user.is_authenticated|tojson }};</script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="{{ url_for('static', filename='js/world-map.js') }}" defer></script>
+{% endblock %}

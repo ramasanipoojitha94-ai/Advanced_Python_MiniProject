@@ -1,0 +1,62 @@
+<form class="transport-search-form" action="{{ url_for('transport.search') }}" method="get" {% if compact_home|default(false) %}data-compact-home="true"{% endif %}>
+  <div class="transport-tab-grid" role="tablist" aria-label="Choose your transport">
+    {% for key, item in modes.items() %}
+    <button type="button" class="transport-tab {% if mode == key %}active{% endif %}" role="tab" aria-selected="{{ 'true' if mode == key else 'false' }}" data-transport-mode="{{ key }}">
+      <span>{{ item[1] }}</span><strong>{{ item[0] }}</strong>
+    </button>
+    {% endfor %}
+  </div>
+  <input type="hidden" name="mode" value="{{ mode }}" id="transport-mode">
+  <div class="transport-form-grid">
+    {% if compact_home|default(false) %}<input type="hidden" name="passengers" value="1"><input type="hidden" name="trip_type" value="oneway">{% endif %}
+    <label class="transport-field">From
+      <input type="text" name="origin" list="transport-locations" value="{{ origin|default('') }}" placeholder="Starting location" autocomplete="off" required>
+    </label>
+    <button class="location-swap" type="button" aria-label="Swap starting location and destination">⇄</button>
+    <label class="transport-field">To
+      <input type="text" name="destination" list="transport-locations" value="{{ destination|default('') }}" placeholder="Where to?" autocomplete="off">
+    </label>
+    <label class="transport-field">Travel date
+      <input type="date" name="date" min="{{ today }}" value="{{ travel_date|default(today) }}" required>
+    </label>
+    {% if not compact_home|default(false) %}
+    <label class="transport-field departure-time-field">Depart after
+      <input type="time" name="departure_time" value="{{ departure_time|default('') }}">
+    </label>
+    <label class="transport-field transport-return-field">Return / rental end
+      <input type="date" name="return_date" min="{{ today }}" value="{{ return_date|default('') }}">
+    </label>
+    <label class="transport-field">Travellers
+      <select name="passengers">{% for count in range(1,9) %}<option value="{{ count }}" {% if passengers|default(1)|int == count %}selected{% endif %}>{{ count }} passenger{% if count != 1 %}s{% endif %}</option>{% endfor %}</select>
+    </label>
+    <label class="transport-field service-type-field">Service / vehicle
+      <select name="service_type">
+        <option value="">Any sample service</option>
+        {% for item in service_types|default([]) %}<option value="{{ item }}" {% if service_type|default('') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+        <option value="Express" {% if service_type|default('') == 'Express' %}selected{% endif %}>Express train</option>
+        <option value="Superfast" {% if service_type|default('') == 'Superfast' %}selected{% endif %}>Superfast train</option>
+        <option value="Passenger" {% if service_type|default('') == 'Passenger' %}selected{% endif %}>Passenger train</option>
+        <option value="Premium" {% if service_type|default('') == 'Premium' %}selected{% endif %}>Premium train</option>
+        <option value="Self-drive" {% if service_type|default('') == 'Self-drive' %}selected{% endif %}>Self-drive</option>
+        <option value="Chauffeur-driven" {% if service_type|default('') == 'Chauffeur-driven' %}selected{% endif %}>Chauffeur-driven</option>
+      </select>
+    </label>
+    <label class="transport-field bus-type-field">Bus type
+      <select name="bus_type"><option value="">Any bus type</option>{% for item in bus_types|default([]) %}<option value="{{ item }}" {% if selected_bus_type|default('') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select>
+    </label>
+    <label class="transport-field flight-class-field">Cabin class
+      <select name="cabin_class"><option value="Economy" {% if cabin_class|default('Economy') == 'Economy' %}selected{% endif %}>Economy</option><option value="Business" {% if cabin_class|default('Economy') == 'Business' %}selected{% endif %}>Business</option></select>
+    </label>
+    <label class="transport-field transport-trip-field">Journey type
+      <select name="trip_type" id="transport-trip-type">
+        <option value="oneway" {% if trip_type|default('oneway') == 'oneway' %}selected{% endif %}>One way</option>
+        <option value="roundtrip" {% if trip_type|default('oneway') == 'roundtrip' %}selected{% endif %}>Round trip</option>
+        <option value="rental" {% if trip_type|default('oneway') == 'rental' %}selected{% endif %}>Multi-day rental</option>
+      </select>
+    </label>
+    {% endif %}
+    <button class="button transport-submit" type="submit">Find {{ modes[mode][0]|lower }} <span>→</span></button>
+  </div>
+  <datalist id="transport-locations">{% for place in locations|default([]) %}<option value="{{ place }}">{% endfor %}</datalist>
+  <p class="data-note transport-disclaimer">Sample schedules, fares and vehicle offers only. Live tickets, availability and payments are not connected.</p>
+</form>

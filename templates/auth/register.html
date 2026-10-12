@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Create account — YatraGo{% endblock %}
+{% block content %}
+<section class="auth-section">
+  <div class="auth-card">
+    <span class="eyebrow">YOUR NEXT CHAPTER</span><h1>Make every mile<br>your own.</h1>
+    <p class="muted">Create an account to save trips and book demo seats.</p>
+    <form method="post" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Your name<input type="text" name="name" required maxlength="100" autocomplete="name" value="{{ request.form.get('name', '') }}"></label>
+      <label>Email address<input type="email" name="email" required maxlength="254" autocomplete="email" value="{{ request.form.get('email', '') }}"></label>
+      <label>Password <small>(at least 8 characters)</small><input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+      <label>Confirm password<input type="password" name="confirm_password" required minlength="8" autocomplete="new-password"></label>
+      <button class="button button-wide" type="submit">Create account</button>
+    </form>
+    <p class="auth-foot">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+  </div>
+  <div class="auth-art auth-art-register">
+    <img class="auth-art-photo" src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&amp;fit=crop&amp;w=1200&amp;q=90" data-fallback="{{ url_for('static', filename='images/travel-fallback.svg') }}" alt="A dramatic range of Himalayan mountains beneath a clear sky" loading="lazy">
+    <div class="auth-art-copy"><span>MADE FOR THE WAY THERE</span><p>Find places that<br>stay with you.</p></div>
+  </div>
+</section>
+{% endblock %}
