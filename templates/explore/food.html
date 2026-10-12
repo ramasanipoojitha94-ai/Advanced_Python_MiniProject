@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Local food explorer — YatraGo{% endblock %}
+{% block content %}
+<section class="page-banner banner-food"><div class="page-wrap"><span class="eyebrow eyebrow-light">SOMETHING DELICIOUS IS AROUND THE CORNER</span><h1>Follow your appetite.</h1><p>Regional favourites to look out for as you travel.</p></div></section>
+<section class="page-wrap explore-page">
+  <form class="explore-filter" method="get"><label class="search-like">⌕ <input type="search" name="q" value="{{ query }}" placeholder="Search dishes or cities"></label><label>State or region<select name="region"><option value="">All regions</option>{% for value in regions %}<option {% if region == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label><label>City<select name="city"><option value="">All cities</option>{% for value in cities %}<option {% if city == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label><button class="button button-small">Find flavours</button></form>
+  {% if items %}<div class="card-grid three food-grid">{% for item in items %}<article class="food-listing"><img src="{{ item.image }}" alt="{{ item.dish }}" loading="lazy"><div class="listing-content"><span class="eyebrow">{{ item.city }} · {{ item.region }}</span><h2>{{ item.dish }}</h2><p>{{ item.description }}</p><strong>{{ item.price }} <small>estimated sample price</small></strong></div></article>{% endfor %}</div>{% else %}<div class="empty-state"><h2>No dishes found</h2><p>Try searching another dish or region.</p></div>{% endif %}
+  <p class="data-note">Food suggestions and prices are sample recommendations, not restaurant listings.</p>
+</section>
+{% endblock %}

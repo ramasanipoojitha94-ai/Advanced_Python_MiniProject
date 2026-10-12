@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-label="YatraGo travel landscape placeholder">
+  <defs><linearGradient id="sky" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#f4ded9"/><stop offset="1" stop-color="#efd2b2"/></linearGradient></defs>
+  <rect width="1200" height="720" fill="url(#sky)"/>
+  <circle cx="930" cy="170" r="74" fill="#fff7e9" opacity=".9"/>
+  <path d="M0 470 260 210l210 210 155-168 340 305 235-205v368H0Z" fill="#a6b1a1"/>
+  <path d="m0 550 260-165 215 135 150-112 330 200 245-140v252H0Z" fill="#687c69"/>
+  <text x="62" y="642" fill="#fff" font-family="Arial,sans-serif" font-size="34" font-weight="700">YatraGo · Travel inspiration</text>
+</svg>

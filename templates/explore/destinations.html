@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Explore India — YatraGo{% endblock %}
+{% block content %}
+<section class="page-banner banner-destinations"><div class="page-wrap"><span class="eyebrow eyebrow-light">A COUNTRY OF A THOUSAND STORIES</span><h1>Find your somewhere.</h1><p>Sample guides to places worth slowing down for.</p></div></section>
+<section class="page-wrap explore-page">
+  <form class="explore-filter destination-filter" method="get">
+    <label class="search-like">⌕ <input type="search" name="q" placeholder="Search places, states or attractions" value="{{ query }}"></label>
+    <label>Region<select name="region"><option value="">All India</option>{% for value in regions %}<option value="{{ value }}" {% if region == value %}selected{% endif %}>{{ value }} India</option>{% endfor %}</select></label>
+    <label>Travel interest<select name="category"><option value="">All experiences</option>{% for value in categories %}<option value="{{ value }}" {% if category == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+    <label>Budget / day<select name="max_budget"><option value="">Any budget</option>{% for value,label in [(2000,'Up to ₹2,000'),(3000,'Up to ₹3,000'),(4500,'Up to ₹4,500'),(7000,'Up to ₹7,000')] %}<option value="{{ value }}" {% if max_budget|string == value|string %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <button class="button button-small">Explore</button>
+  </form>
+  {% if items %}<div class="destination-grid">{% for item in items %}<article class="destination-card">
+    <a href="{{ url_for('main.destination_detail', destination_id=item.id) }}" class="destination-photo"><img src="{{ item.image }}" alt="{{ item.name }} travel destination in {{ item.state }}" loading="lazy"><span class="region-pill">{{ item.region }} India</span></a>
+    <div class="destination-body"><div class="destination-title-row"><span class="eyebrow">{{ item.state }} · {{ item.category }}</span>{% if current_user.is_authenticated %}<form method="post" action="{{ url_for('main.toggle_destination_save', destination_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="save-place {% if item.id in saved_ids %}is-saved{% endif %}" aria-label="{% if item.id in saved_ids %}Remove saved place{% else %}Save place{% endif %}" title="Save destination">{% if item.id in saved_ids %}♥{% else %}♡{% endif %}</button></form>{% endif %}</div>
+    <a href="{{ url_for('main.destination_detail', destination_id=item.id) }}"><h2>{{ item.name }}</h2><p>{{ item.description }}</p></a><div class="destination-detail"><span><small>ESTIMATED BUDGET</small>{{ item.budget }}</span><span><small>BEST SEASON</small>{{ item.season }}</span></div><a class="text-link destination-link" href="{{ url_for('main.destination_detail', destination_id=item.id) }}">Explore {{ item.name }} →</a></div></article>{% endfor %}</div>{% else %}<div class="empty-state"><h2>No places match that search</h2><p>Try a different place, state, interest, or budget.</p></div>{% endif %}
+  {% if current_user.is_authenticated and current_user.recent_destinations %}<section class="recent-strip"><span class="eyebrow">PICK UP WHERE YOU LEFT OFF</span><p>Recently viewed: {% for recent in current_user.recent_destinations|sort(attribute='viewed_at', reverse=true) %}{% if loop.index <= 5 %}<a href="{{ url_for('main.destination_detail', destination_id=recent.destination_id) }}">{{ recent.destination.name }}</a>{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}</p></section>{% endif %}
+  <p class="data-note">Travel budgets and seasonal suggestions are illustrative sample estimates, not live prices.</p>
+</section>
+{% endblock %}

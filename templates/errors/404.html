@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block title %}Page not found — YatraGo{% endblock %}
+{% block content %}<section class="empty-state error-page"><span class="eyebrow">A LITTLE DETOUR</span><h1>We can’t find that page.</h1><p>The link may be out of date or the page may have moved.</p><a class="button button-small" href="{{ url_for('main.home') }}">Back to YatraGo</a></section>{% endblock %}

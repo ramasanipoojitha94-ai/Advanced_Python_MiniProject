@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Bus results — YatraGo{% endblock %}
+{% block content %}
+<section class="page-banner"><div class="page-wrap"><span class="eyebrow eyebrow-light">SAMPLE BUS SCHEDULES</span><h1>Find your way there.</h1><p>Demo operator schedules and fares, not live inventory.</p></div></section>
+<section class="page-wrap results-layout">
+  <aside class="filter-panel">
+    <h2>Refine your search</h2>
+    <form method="get" action="{{ url_for('main.search') }}" class="stack-form">
+      <input type="hidden" name="passengers" value="{{ search_values.get('passengers', 1) }}">
+      <label>From<select name="source" required>{% for route in routes %}<option value="{{ route.source }}" {% if route.source|lower == search_values.get('source','')|lower %}selected{% endif %}>{{ route.source }}</option>{% endfor %}</select></label>
+      <label>To<select name="destination" required>{% for route in routes %}<option value="{{ route.destination }}" {% if route.destination|lower == search_values.get('destination','')|lower %}selected{% endif %}>{{ route.destination }}</option>{% endfor %}</select></label>
+      <label>Journey date<input type="date" name="date" min="{{ today }}" value="{{ search_values.get('date', today) }}" required></label>
+      <label>Maximum fare (₹)<input type="number" name="max_price" min="1" placeholder="Any fare" value="{{ search_values.get('max_price', '') }}"></label>
+      <label>Bus type<select name="bus_type"><option value="">Any bus type</option>{% for type in ['AC Sleeper','Volvo Multi-Axle','AC Seater','Non-AC Sleeper'] %}<option {% if selected_bus_type|default('') == type %}selected{% endif %}>{{ type }}</option>{% endfor %}</select></label>
+      <label>Amenities<select name="amenity"><option value="">Any amenities</option>{% for item in ['Wi-Fi','Charging point','Blanket','Water bottle'] %}<option value="{{ item }}" {% if selected_amenity|default('') == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+      <label>Departure<select name="departure"><option value="">Any time</option>{% for key,label in [('morning','Morning · 5am–12pm'),('evening','Afternoon · 12pm–6pm'),('night','Evening · 6pm–midnight')] %}<option value="{{ key }}" {% if selected_departure|default('') == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <label>Sort by<select name="sort">{% for key,label in [('departure','Departure time'),('price','Lowest fare'),('duration','Shortest trip')] %}<option value="{{ key }}" {% if selected_sort|default('departure') == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <button class="button button-wide" type="submit">Update results</button>
+    </form>
+  </aside>
+  <div class="results-main">
+    <div class="results-top"><div><span class="eyebrow">{{ search_values.get('date', '') }}</span><h2>{{ search_values.get('source', 'Choose a route') }} <span class="text-red">→</span> {{ search_values.get('destination', '') }}</h2></div><span class="sample-pill">DEMO DATA</span></div>
+    {% if trips %}
+      <p class="muted result-count">{{ trips|length }} departure{% if trips|length != 1 %}s{% endif %} · seat availability shown for this demo</p>
+      <div class="trip-list">
+        {% for trip in trips %}
+        <article class="trip-card">
+          <div class="operator-row"><img class="transport-photo bus-photo" src="{{ trip.sample_image }}" alt="Sample coach on an Indian intercity journey" loading="lazy"><div><strong>{{ trip.bus.operator }}</strong><small>{{ trip.bus.bus_type }}</small></div><span class="sample-pill">SAMPLE</span></div>
+          <div class="trip-times">
+            <div><strong>{{ trip.departure_at.strftime('%I:%M %p') }}</strong><span>{{ trip.route.source }}</span></div>
+            <div class="trip-duration"><span>{{ ((trip.arrival_at - trip.departure_at).total_seconds() // 60)|int // 60 }}h {{ ((trip.arrival_at - trip.departure_at).total_seconds() // 60)|int % 60 }}m</span><i></i></div>
+            <div><strong>{{ trip.arrival_at.strftime('%I:%M %p') }}</strong><span>{{ trip.route.destination }}</span></div>
+          </div>
+          <div class="trip-bottom"><span>{{ trip.available_seats }} seats available</span><span class="amenities">{{ trip.bus.amenities.replace(',', ' · ') }}</span><strong class="fare">₹{{ trip.fare }} <small>/ seat</small></strong>
+            {% if trip.available_seats %}<a class="button button-small" href="{{ url_for('bookings.select_seats', trip_id=trip.id, passengers=passenger_count|default(1)) }}">Select seats</a>{% else %}<button class="button button-small button-disabled" disabled>Sold out</button>{% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state"><span class="empty-icon">⌕</span><h2>No departures found</h2><p>Try another route or date. This demo only includes selected popular Indian routes and near-future dates.</p><a class="button button-small" href="{{ url_for('main.home') }}">Change search</a></div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
