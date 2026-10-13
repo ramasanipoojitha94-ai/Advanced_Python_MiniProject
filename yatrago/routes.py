@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timedelta
 import os
+import re
 import time as time_mod
 from werkzeug.utils import secure_filename
 
@@ -31,6 +32,8 @@ from yatrago.models import (
     TransportOption,
     WorldPlace,
 )
+from yatrago.search_catalog import canonical_travel_location
+from yatrago.search_providers import demo_transport_provider
 from yatrago.transport import MODES, supported_locations
 
 main = Blueprint("main", __name__)
@@ -114,32 +117,51 @@ def home():
 
 @main.get("/search")
 def search():
-    source = request.args.get("source", "").strip()
-    destination = request.args.get("destination", "").strip()
+    source = " ".join(request.args.get("source", "").split())
+    destination = " ".join(request.args.get("destination", "").split())
     travel_date = request.args.get("date", "").strip()
     departure_time = request.args.get("departure_time", "").strip()
+    search_values = request.args
+    empty_context = {
+        "trips": [],
+        "routes": Route.query.order_by(Route.source, Route.destination).all(),
+        "search_values": search_values,
+        "locations": supported_locations(),
+    }
     try:
         day = date.fromisoformat(travel_date)
         selected_time = time.fromisoformat(departure_time) if departure_time else None
     except ValueError:
         flash("Choose a valid journey date.", "error")
-        return render_template("search/results.html", trips=[], search_values=request.args)
-    if not source or not destination or source.casefold() == destination.casefold():
+        return render_template("search/results.html", **empty_context)
+    if not source or not destination:
         flash("Choose different source and destination cities.", "error")
-        return render_template("search/results.html", trips=[], search_values=request.args)
+        return render_template("search/results.html", **empty_context)
+    location_pattern = re.compile(r"[\w][\w .,'’()\-]{0,79}", re.UNICODE)
+    if not all(
+        location_pattern.fullmatch(location) and any(character.isalpha() for character in location)
+        for location in (source, destination)
+    ):
+        flash("Enter valid city names using letters, numbers, spaces, or hyphens.", "error")
+        return render_template("search/results.html", **empty_context)
     if day < date.today():
         flash("Journey date cannot be in the past.", "error")
-        return render_template("search/results.html", trips=[], search_values=request.args)
+        return render_template("search/results.html", **empty_context)
+    source = canonical_travel_location(source)
+    destination = canonical_travel_location(destination)
+    if source.casefold() == destination.casefold():
+        flash("Choose different source and destination cities.", "error")
+        return render_template("search/results.html", **empty_context)
     passengers = request.args.get("passengers", default=1, type=int)
     if not 1 <= passengers <= 6:
         flash("Choose between 1 and 6 passengers.", "error")
-        return render_template("search/results.html", trips=[], search_values=request.args)
+        return render_template("search/results.html", **empty_context)
+    demo_transport_provider.bus_departures(source, destination, day)
 
     query = Trip.query.join(Trip.route).join(Trip.bus).filter(
         func.lower(Route.source) == source.lower(),
         func.lower(Route.destination) == destination.lower(),
-        Trip.departure_at >= datetime.combine(day, time.min),
-        Trip.departure_at < datetime.combine(day + timedelta(days=1), time.min),
+        func.date(Trip.departure_at) == day.isoformat(),
     )
     if selected_time:
         query = query.filter(
@@ -171,20 +193,30 @@ def search():
     else:
         query = query.order_by(Trip.departure_at)
     trips = query.all()
-    for index, trip in enumerate(trips):
+    for trip in trips:
         trip.available_seats = sum(seat.booking_id is None for seat in trip.seats)
+    availability = request.args.get("availability", "")
+    if availability == "available":
+        trips = [trip for trip in trips if trip.available_seats >= passengers]
+    for index, trip in enumerate(trips):
         trip.sample_image = BUS_IMAGES[index % len(BUS_IMAGES)]
     routes = Route.query.order_by(Route.source, Route.destination).all()
     return render_template(
         "search/results.html",
         trips=trips,
         routes=routes,
-        search_values=request.args,
+        search_values={
+            **request.args.to_dict(),
+            "source": source,
+            "destination": destination,
+        },
+        locations=supported_locations(),
         selected_bus_type=bus_type,
         selected_departure=departure,
         selected_sort=sort,
         selected_amenity=amenity,
         passenger_count=passengers,
+        selected_availability=request.args.get("availability", ""),
     )
 
 

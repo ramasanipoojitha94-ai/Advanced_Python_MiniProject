@@ -61,9 +61,9 @@ def test_homepage_and_transport_search_cover_modes_filters_and_sample_data(clien
         },
     )
     assert response.status_code == 200
-    assert b"Deccan Rail" in response.data
+    assert b"Demo rail service" in response.data
     assert b"DEMO DATA ONLY" in response.data
-    assert b"sample seats available" in response.data
+    assert b"demo seats" in response.data
 
 
 def test_all_transport_modes_remain_available_outside_the_home_search(client):
@@ -102,6 +102,63 @@ def test_bus_and_flight_tabs_reuse_existing_search_flows(client):
     assert flight.status_code == 302
     assert "/flights?" in flight.location
     assert "depart_date=" in flight.location
+
+
+def test_bus_search_displays_state_corporations_and_private_demo_services(client):
+    travel_day = (date.today() + timedelta(days=30)).isoformat()
+    response = client.get(
+        "/search",
+        query_string={
+            "source": "Bengaluru",
+            "destination": "Hyderabad",
+            "date": travel_day,
+            "passengers": 1,
+        },
+    )
+    assert response.status_code == 200
+    assert b"KSRTC (DEMO DATA)" in response.data
+    assert b"TGSRTC (DEMO DATA)" in response.data
+    assert b"Private bus operator A (DEMO DATA)" in response.data
+    assert response.data.count(b"DEMO DATA") >= 8
+
+    response = client.get(
+        "/search",
+        query_string={
+            "source": "Vijayawada",
+            "destination": "Bengaluru",
+            "date": travel_day,
+        },
+    )
+    assert response.status_code == 200
+    assert b"APSRTC (DEMO DATA)" in response.data
+    assert b"KSRTC (DEMO DATA)" in response.data
+
+
+def test_train_search_generates_multiple_route_date_options_and_seats(client, app):
+    travel_day = (date.today() + timedelta(days=35)).isoformat()
+    response = client.get(
+        "/transport",
+        query_string={
+            "mode": "train",
+            "origin": "Agra",
+            "destination": "Ahmedabad",
+            "date": travel_day,
+            "passengers": 2,
+            "sort": "departure",
+        },
+    )
+    assert response.status_code == 200
+    assert response.data.count(b"DEMO DATA") >= 6
+    assert b"Agra" in response.data and b"Ahmedabad" in response.data
+    with app.app_context():
+        options = TransportOption.query.filter_by(
+            mode="train", origin="Agra", destination="Ahmedabad"
+        ).filter(
+            db.func.date(TransportOption.departure_at) == travel_day
+        ).all()
+        assert len(options) == 6
+        assert all(option.provider == "Demo rail service (DEMO DATA)" for option in options)
+        assert all(len(option.seats) == 32 for option in options)
 
 
 def test_train_booking_confirmation_double_booking_and_seat_reuse(

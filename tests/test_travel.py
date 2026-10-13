@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+import re
 
 import pytest
 
@@ -75,6 +76,68 @@ def test_sample_flight_search_and_filters(client):
     assert b"SAMPLE FLIGHT OPTIONS" in response.data
     assert b"Bengaluru" in response.data and b"Delhi" in response.data
     assert b"DEMO DATA ONLY" in response.data
+
+
+def test_flight_search_resolves_airport_codes_and_names_for_future_dates(client, app):
+    travel_day = (date.today() + timedelta(days=75)).isoformat()
+    response = client.get(
+        "/flights",
+        query_string={
+            "origin": "JFK",
+            "destination": "Dubai International Airport",
+            "depart_date": travel_day,
+            "trip_type": "oneway",
+            "cabin_class": "Economy",
+            "passengers": 2,
+            "sort": "duration",
+        },
+    )
+    assert response.status_code == 200
+    assert b"New York" in response.data
+    assert b"Dubai" in response.data
+    assert b"Demo air service" in response.data
+    assert b"DEMO DATA" in response.data
+    assert response.data.count(b"Demo air service") >= 6
+    with app.app_context():
+        flight = Flight.query.filter_by(
+            origin_city="New York", destination_city="Dubai"
+        ).filter(db.func.date(Flight.departure_at) == travel_day).first()
+        assert flight is not None
+        assert flight.departure_at.date().isoformat() == travel_day
+        assert flight.arrival_at > flight.departure_at
+        assert len(flight.seats) == 24
+
+
+def test_flight_search_filters_sorting_and_empty_results(client):
+    travel_day = (date.today() + timedelta(days=80)).isoformat()
+    route = {
+        "origin": "SFO",
+        "destination": "DXB",
+        "depart_date": travel_day,
+        "trip_type": "oneway",
+        "cabin_class": "Economy",
+    }
+    filtered = client.get(
+        "/flights",
+        query_string={**route, "depart_time": "13:00", "max_stops": "1", "sort": "price"},
+    )
+    assert filtered.status_code == 200
+    assert b"Demo air service" in filtered.data
+    shown_fares = [
+        int(value)
+        for value in re.findall(
+            r'<strong>\u20b9(\d+) <small>/ traveller',
+            filtered.get_data(as_text=True),
+        )
+    ]
+    assert shown_fares == sorted(shown_fares)
+
+    empty = client.get(
+        "/flights",
+        query_string={**route, "max_price": "1"},
+    )
+    assert empty.status_code == 200
+    assert b"No sample flights found" in empty.data
 
 
 def test_sample_stay_search_filters_property_records(client):

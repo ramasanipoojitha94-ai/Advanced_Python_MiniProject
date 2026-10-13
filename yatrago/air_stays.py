@@ -14,6 +14,8 @@ from yatrago.models import (
     StayBooking,
     StayProperty,
 )
+from yatrago.search_catalog import AIRPORT_DATA, AIRPORTS, resolve_airport
+from yatrago.search_providers import demo_transport_provider
 from yatrago.travel_services import (
     TravelBookingError,
     book_flight,
@@ -23,34 +25,17 @@ from yatrago.travel_services import (
 )
 
 travel = Blueprint("travel", __name__)
-AIRPORTS = {
-    "Bengaluru": ("BLR", "Kempegowda International Airport"),
-    "Delhi": ("DEL", "Indira Gandhi International Airport"),
-    "Mumbai": ("BOM", "Chhatrapati Shivaji Maharaj International Airport"),
-    "Hyderabad": ("HYD", "Rajiv Gandhi International Airport"),
-    "Chennai": ("MAA", "Chennai International Airport"),
-    "Kolkata": ("CCU", "Netaji Subhas Chandra Bose International Airport"),
-    "Kochi": ("COK", "Cochin International Airport"),
-    "Goa": ("GOI", "Manohar International Airport"),
-    "Pune": ("PNQ", "Pune Airport"),
-    "Ahmedabad": ("AMD", "Sardar Vallabhbhai Patel International Airport"),
-    "Jaipur": ("JAI", "Jaipur International Airport"),
-    "Lucknow": ("LKO", "Chaudhary Charan Singh International Airport"),
-    "Dubai": ("DXB", "Dubai International Airport"),
-    "Singapore": ("SIN", "Singapore Changi Airport"),
-    "Bangkok": ("BKK", "Suvarnabhumi Airport"),
-    "Colombo": ("CMB", "Bandaranaike International Airport"),
-}
 
 
 def _search_flights(
-    origin, destination, travel_day, cabin_class, max_price, max_stops, sort, depart_time=None
+    origin, destination, travel_day, cabin_class, max_price, max_stops, sort,
+    depart_time=None, passengers=1,
 ):
+    demo_transport_provider.flight_departures(origin, destination, travel_day)
     query = Flight.query.filter(
         Flight.origin_city == origin,
         Flight.destination_city == destination,
-        Flight.departure_at >= datetime.combine(travel_day, time.min),
-        Flight.departure_at < datetime.combine(travel_day + timedelta(days=1), time.min),
+        func.date(Flight.departure_at) == travel_day.isoformat(),
         Flight.departure_at > datetime.now(),
     )
     if depart_time:
@@ -73,9 +58,19 @@ def _search_flights(
     else:
         query = query.order_by(fare_field, Flight.departure_at)
     flights = query.all()
+    flights = [
+        flight for flight in flights
+        if sum(seat.booking_id is None for seat in flight.seats) >= passengers
+    ]
     for index, flight in enumerate(flights):
         flight.available_seats = sum(seat.booking_id is None for seat in flight.seats)
         flight.sample_image = FLIGHT_IMAGES[index % len(FLIGHT_IMAGES)]
+        flight.origin_airport_display = AIRPORTS.get(
+            flight.origin_city, (flight.origin_code, flight.origin_airport)
+        )[1]
+        flight.destination_airport_display = AIRPORTS.get(
+            flight.destination_city, (flight.destination_code, flight.destination_airport)
+        )[1]
     return flights
 
 
@@ -102,8 +97,12 @@ def flights():
             outbound_day = date.fromisoformat(outbound_text)
             return_day = date.fromisoformat(return_text) if trip_type == "roundtrip" else None
             departure_time = time.fromisoformat(departure_time_text) if departure_time_text else None
-            if origin not in AIRPORTS or destination not in AIRPORTS or origin == destination:
-                raise ValueError("Choose two different listed airports.")
+            origin = resolve_airport(origin)
+            destination = resolve_airport(destination)
+            if not origin or not destination:
+                raise ValueError("Choose airports by city, airport name, or IATA code.")
+            if origin == destination:
+                raise ValueError("Choose two different airports.")
             if cabin_class not in {"Economy", "Business"}:
                 raise ValueError("Choose Economy or Business cabin.")
             if trip_type not in {"oneway", "roundtrip"} or not 1 <= passengers <= 6:
@@ -114,16 +113,20 @@ def flights():
                 raise ValueError("Choose valid future travel dates.")
             results = _search_flights(
                 origin, destination, outbound_day, cabin_class, max_price, max_stops, sort,
-                departure_time,
+                departure_time, passengers,
             )
             if return_day:
-                return_results = _search_flights(destination, origin, return_day, cabin_class, None, None, "price")
+                return_results = _search_flights(
+                    destination, origin, return_day, cabin_class, None, None, "price",
+                    passengers=passengers,
+                )
         except ValueError as exc:
             error = str(exc) or "Choose valid travel dates."
             results = []
     return render_template(
         "flights/search.html",
         airports=sorted(AIRPORTS.items()),
+        airport_data=AIRPORT_DATA,
         origin=origin,
         destination=destination,
         depart_date=outbound_text,
