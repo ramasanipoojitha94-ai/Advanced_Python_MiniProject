@@ -15,6 +15,13 @@ from yatrago.models import (
     TransportOption,
     TransportSeat,
 )
+from yatrago.search_catalog import (
+    AIRPORT_DATA,
+    INDIAN_TRAVEL_LOCATIONS,
+    canonical_travel_location,
+    resolve_airport,
+)
+from yatrago.search_providers import demo_transport_provider
 from yatrago.transport_data import MODE_LABELS
 from yatrago.transport_services import (
     TransportBookingError,
@@ -43,7 +50,8 @@ RESULT_IMAGES = [
 
 
 def supported_locations():
-    locations = set()
+    locations = set(INDIAN_TRAVEL_LOCATIONS)
+    locations.update(AIRPORT_DATA)
     locations.update(value[0] for value in db.session.query(Destination.name).all())
     for origin, destination in db.session.query(TransportOption.origin, TransportOption.destination):
         locations.add(origin)
@@ -82,9 +90,27 @@ def search():
         try:
             day = date.fromisoformat(travel_text)
             return_day = date.fromisoformat(return_text) if return_text else None
-            if origin not in supported_locations():
+            if mode == "flight":
+                resolved_origin = resolve_airport(origin)
+                resolved_destination = resolve_airport(destination)
+                if not resolved_origin or not resolved_destination:
+                    raise ValueError("Choose airports by city, airport name, or IATA code.")
+                origin, destination = resolved_origin, resolved_destination
+            elif mode == "bus":
+                origin = canonical_travel_location(origin)
+                destination = canonical_travel_location(destination)
+                if not all(
+                    1 <= len(location) <= 80
+                    and any(character.isalpha() for character in location)
+                    for location in (origin, destination)
+                ):
+                    raise ValueError("Enter valid origin and destination city names.")
+            elif origin not in supported_locations():
                 raise ValueError("Choose a starting location from the supported list.")
-            if mode not in {"car", "bike"} and destination not in supported_locations():
+            if (
+                mode not in {"car", "bike", "bus", "flight"}
+                and destination not in supported_locations()
+            ):
                 raise ValueError("Choose a destination from the supported list.")
             if (
                 destination
@@ -153,6 +179,8 @@ def search():
             )
             if mode not in {"car", "bike"}:
                 query = query.filter(TransportOption.destination == destination)
+            if mode == "train":
+                demo_transport_provider.train_departures(origin, destination, day)
             if departure_time:
                 try:
                     requested_time = time.fromisoformat(departure_time)
@@ -177,6 +205,11 @@ def search():
             for index, option in enumerate(results):
                 option.sample_image = RESULT_IMAGES[index % len(RESULT_IMAGES)]
                 option.available_seats = sum(seat.booking_id is None for seat in option.seats)
+            if mode == "train":
+                results = [
+                    option for option in results
+                    if option.available_seats >= passengers
+                ]
             if mode == "cab" and trip_type == "roundtrip" and return_day:
                 return_results = TransportOption.query.filter(
                     TransportOption.mode == mode,

@@ -5,11 +5,11 @@
   <article class="confirmation-card">
     <div class="confirmation-check check-animated">✓</div><span class="eyebrow">SAMPLE BUS BOOKING · SAVED</span><h1>Thank you for choosing YatraGo!</h1>
     <p class="muted">Your journey starts here. We’re happy to be part of your adventure.</p><p class="demo-disclaimer">Your seat reservation is saved in this account. This is a sample schedule; no payment was taken.</p>
-    <div class="reference-box"><span>BOOKING REFERENCE</span><strong>{{ booking.reference }}</strong></div>
+    <div class="reference-box"><span>DEMO BOOKING REFERENCE · NOT A TICKET</span><strong>{{ booking.reference }}</strong></div>
     <div class="confirmation-route"><div><strong>{{ booking.trip.departure_at.strftime('%I:%M %p') }}</strong><span>{{ booking.trip.route.source }}</span></div><div class="route-line">→</div><div><strong>{{ booking.trip.arrival_at.strftime('%I:%M %p') }}</strong><span>{{ booking.trip.route.destination }}</span></div></div>
-    <p class="muted">{{ booking.trip.departure_at.strftime('%A, %d %B %Y') }} · {{ booking.trip.bus.operator }}</p>
+    <p class="muted">{{ booking.trip.departure_at.strftime('%A, %d %B %Y') }} · Demo bus service · DEMO DATA</p>
     <div class="passenger-list"><h2>Passengers</h2>{% for passenger in booking.passengers|sort(attribute='seat.seat_number') %}<div><span>{{ passenger.name }} · {{ passenger.age }}</span><strong>Seat {{ passenger.seat.seat_number }}</strong></div>{% endfor %}</div>
-    <div class="confirmation-total"><span>Total fare</span><strong>₹{{ booking.total_fare }}</strong></div>
+    <div class="confirmation-total"><span>Total sample fare</span><strong>₹{{ booking.total_fare }}</strong></div>
     <div class="button-row"><a class="button" href="{{ url_for('main.trips') }}">View My Trips</a><a class="button button-outline" href="{{ url_for('main.destinations') }}">Explore Destinations</a><a class="text-link" href="{{ url_for('main.home') }}">Back to Home →</a></div>
   </article>
 </section>
